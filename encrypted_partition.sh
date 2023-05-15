@@ -39,22 +39,10 @@ pacstrap -i /mnt base base-devel linux linux-firmware
 echo "Generating the file system table at /mnt/etc/fstab"
 genfstab -U -p /mnt >> /mnt/etc/fstab
 
-echo "arch-chroot into /mnt"
-arch-chroot /mnt
+echo "copying grub bootstrapper into /mnt/home"
+curl https://raw.githubusercontent.com/jroddev/arch_installer/master/encrypted_partition.sh > /mnt/home/grub_bootstrap.sh
+chmod +x /mnt/home/grub_bootstrap.sh
 
-echo "Setting root password to the crypt passphrase"
-echo "root:$PASSPHRASE" | chpasswd
+echo "arch-chroot into /mnt and running grub bootstrap"
+arch-chroot /mnt /home/grub_bootstrap.sh
 
-echo "Add encrypt to /etc/mkinitcpio.conf HOOKS"
-sed -i 's/HOOKS=.*/HOOKS="base udev autodetect modconf kms keyboard keymap consolefont block encrypt filesystems fsck"/' /etc/mkinitcpio.conf
-mkinitcpio -p linux
-
-echo "Adding cryptdevice details to /etc/default/grub"
-pacman -S grub efibootmgr
-sed -i 's/#GRUB_ENABLE_CRYPTODISK=y/GRUB_ENABLE_CRYPTODISK=y/' /etc/default/grub
-sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="cryptdevice=${DISK}p2:cryptroot"/' /etc/default/grub
-grub-install --recheck --target=x86_64-efi --bootloader-id=GRUB --efi-directory=/boot/efi
-grub-mkconfig --output /boot/grub/grub.cfg
-
-exit
-echo "System is now setup. Reboot to login to the system"
